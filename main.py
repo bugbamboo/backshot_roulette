@@ -1,13 +1,14 @@
 import copy
 from numpy import random
+from joblib import Parallel, delayed
 class Player:
-    def __init__(self, health,bullets,blanks,gun_state,items, num_adrenaline):
+    def __init__(self, health,bullets,blanks,items, num_adrenaline):
         self.health = health
         self.bullets = bullets
         self.blanks = blanks
         self.gun_state = [-1 for _ in range(bullets+blanks)]
         self.items = items
-        self.num_adrenaline = 0 #this item is pretty different
+        self.num_adrenaline = num_adrenaline #this item is pretty different
         self.jammed = False
         #gun_state contains all information about the gun available to the player
         #items:
@@ -210,5 +211,37 @@ def evaluate_state(player_a,player_b,gun_state,max_health, double_damage,to_move
     search_map[hash(player_a,player_b,str(gun_state), double_damage,to_move)] = ev
     return ev
 
+def avg_ev(player_a,player_b,gun_state,max_health,double_damage,num_games):
+    ev = 0
+    #use joblib to parallelize the evaluation
+    evs = Parallel(n_jobs=-1)(delayed(evaluate_state)(player_a,player_b,gun_state,max_health,double_damage,0,{}) for _ in range(num_games))
+    return sum(evs)/num_games
 
+if __name__ == "__main__":
+    num_bullets =3
+    num_blanks = 3
+    a_hp = 10
+    b_hp = 10
+    a_items = [
+        0, #inverter
+        0, #saw
+        0, #cigs
+        0, #jammer
+        0, #beer    
+        0, #spyglass
+        0 #burner phone
+        ]
+    b_items = [
+        0, #inverter
+        0, #saw
+        0, #cigs
+        0, #jammer
+        0, #beer
+        0, #spyglass
+        0 #burner phone
+        ]
 
+    player_a = Player(a_hp,num_bullets,num_blanks, a_items,0)
+    player_b = Player(b_hp,num_bullets,num_blanks, b_items,0)
+    gun_state = [-1 for _ in range(num_bullets+num_blanks)]
+    print(avg_ev(player_a,player_b,gun_state,10,2,1))
