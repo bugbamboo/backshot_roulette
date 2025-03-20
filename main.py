@@ -39,8 +39,8 @@ def update_ev(ev, new_ev,to_move):
 
 def evaluate_state(player_a,player_b,gun_state,max_health, double_damage,to_move, search_map):
     #transposition table
-    if hash(player_a,player_b,str(gun_state), max_health, double_damage,to_move) in search_map:
-        return search_map[hash(player_a,player_b,str(gun_state), double_damage,to_move)]
+    if hash((player_a,player_b,str(gun_state), max_health, double_damage,to_move)) in search_map:
+        return search_map[hash((player_a,player_b,str(gun_state), max_health, double_damage,to_move))]
     #evaluate terminal states, tuning this with self-play should build the optimal strategy
     if player_a.health <= 0:
         return -1
@@ -149,7 +149,7 @@ def evaluate_state(player_a,player_b,gun_state,max_health, double_damage,to_move
             b_prime.items[5] -= 1
             b_prime.gun_state[0] = gun_state_prime[0]
         ev = update_ev(ev, evaluate_state(a_prime,b_prime,gun_state_prime, max_health, double_damage,to_move,search_map), to_move)
-    if check.items[6] >= 0: #burner phone
+    if check.items[6] > 0: #burner phone
         a_prime = copy.deepcopy(player_a)
         b_prime = copy.deepcopy(player_b)
         gun_state_prime = copy.deepcopy(gun_state)
@@ -157,6 +157,8 @@ def evaluate_state(player_a,player_b,gun_state,max_health, double_damage,to_move
             indices = [i for i in range(len(gun_state_prime)) if check.gun_state[i] == -1]
             if 0 in indices:
                 indices.remove(0)
+            if len(indices) == 0:
+                indices = [0]
         else:
             indices = [0]
         index = random.choice(indices)
@@ -208,20 +210,20 @@ def evaluate_state(player_a,player_b,gun_state,max_health, double_damage,to_move
     else:
         b_prime.health -= bullet * double_damage
     ev = update_ev(ev, evaluate_state(a_prime,b_prime,gun_state_prime, max_health, 1,(to_move+bullet)%2,search_map), to_move)
-    search_map[hash(player_a,player_b,str(gun_state), double_damage,to_move)] = ev
+    search_map[hash((player_a,player_b,str(gun_state), max_health, double_damage,to_move))] = ev
     return ev
 
-def avg_ev(player_a,player_b,gun_state,max_health,double_damage,num_games):
-    ev = 0
+def avg_ev(player_a,player_b,gun_state,max_health,double_damage):
+    num_games = 10000
     #use joblib to parallelize the evaluation
     evs = Parallel(n_jobs=-1)(delayed(evaluate_state)(player_a,player_b,gun_state,max_health,double_damage,0,{}) for _ in range(num_games))
     return sum(evs)/num_games
 
 if __name__ == "__main__":
-    num_bullets =3
-    num_blanks = 3
-    a_hp = 10
-    b_hp = 10
+    num_bullets =10
+    num_blanks = 10
+    a_hp = 3
+    b_hp = 3
     a_items = [
         0, #inverter
         0, #saw
@@ -244,4 +246,4 @@ if __name__ == "__main__":
     player_a = Player(a_hp,num_bullets,num_blanks, a_items,0)
     player_b = Player(b_hp,num_bullets,num_blanks, b_items,0)
     gun_state = [-1 for _ in range(num_bullets+num_blanks)]
-    print(avg_ev(player_a,player_b,gun_state,10,2,1))
+    print(avg_ev(player_a,player_b,gun_state,10,2))
